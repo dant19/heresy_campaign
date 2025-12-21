@@ -1,0 +1,12 @@
+services:
+  heresy-tracker:
+    build: .
+    container_name: heresy-tracker
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+      - ADMIN_EMAILS=you@example.com
+    volumes:
+      - /volume1/docker/heresy-tracker/data:/app/data
+    restart: unless-stopped

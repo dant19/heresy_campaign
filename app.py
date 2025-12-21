@@ -32,8 +32,11 @@ import streamlit as st
 # App Config
 # ============================
 APP_TITLE = "Heresy Campaign Tracker — Planets & Void"
-DB_PATH = "campaign.db"
+DB_PATH = "data/campaign.db"
 CP_MIN, CP_MAX = -6, 6
+
+# Ensure persistent data directory exists (for Docker/Synology)
+os.makedirs("data", exist_ok=True)
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 
@@ -44,6 +47,7 @@ BATTLE_TYPES = {
     "gothic_armada": "Gothic Armada — Void (Space)",
 }
 SIDE_LABELS = {"loyalist": "Loyalist", "traitor": "Traitor", "draw": "Draw"}
+
 
 
 # ============================
@@ -156,7 +160,12 @@ def seed_default_map(c: sqlite3.Connection, radius: int = 4) -> None:
 # Gothic Theme + UI
 # ============================
 def apply_heresy_style() -> None:
-    # Dark dropdown menus + ivory text + kill top white bar.
+    """
+    Gothic dark theme + ivory text, but with a pragmatic dropdown fix:
+    Streamlit/BaseWeb sometimes forces the dropdown menu background to white.
+    So we FORCE dropdown option text to dark (readable) while keeping the closed
+    select control styled dark/ivory.
+    """
     st.markdown(
         """
         <style>
@@ -164,26 +173,20 @@ def apply_heresy_style() -> None:
 
         :root{
           --bg0:#07070a;
-          --bg1:#0f1016;
           --panel:#10111a;
-          --panel2:#0c0d12;
 
           --ink:#f0eadc;        /* ivory */
           --ink2:#d7cfbf;       /* muted ivory */
 
           --red:#b30000;
-          --red2:#7a0000;
-
           --gold:#b89b5e;
-          --gold2:#d1b87a;
 
           --border: rgba(184,155,94,.25);
-          --border2: rgba(240,234,220,.22);
           --shadow: 0 14px 40px rgba(0,0,0,.35);
           --glow: 0 0 0.6rem rgba(179,0,0,.25);
         }
 
-        /* Remove / restyle Streamlit header bar (the white strip) */
+        /* Remove / restyle Streamlit header bar (white strip) */
         [data-testid="stHeader"]{
           background: rgba(0,0,0,0) !important;
           box-shadow: none !important;
@@ -198,7 +201,7 @@ def apply_heresy_style() -> None:
           color: var(--ink) !important;
         }
 
-        /* Global text forcing */
+        /* Global text forcing (ivory) */
         html, body, p, span, div, li, label,
         .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown div,
         [data-testid="stMarkdownContainer"] *{
@@ -248,42 +251,45 @@ def apply_heresy_style() -> None:
           color: rgba(240,234,220,0.55) !important;
         }
 
-        /* BaseWeb selectbox control */
+        /* ======================================
+           SELECTBOX (closed control): dark + ivory
+           ====================================== */
         div[data-baseweb="select"] > div{
-          background: rgba(10,11,16,.90) !important;
+          background: rgba(10,11,16,.92) !important;
           border: 1px solid var(--border) !important;
-          color: var(--ink) !important;
           border-radius: 10px !important;
+          box-shadow: 0 10px 25px rgba(0,0,0,.25) !important;
         }
         div[data-baseweb="select"] *{
           color: var(--ink) !important;
         }
-
-        /* Dropdown menu popover + options */
-        div[data-baseweb="popover"] > div{
-          background: rgba(10,11,16,.98) !important;
-          border: 1px solid var(--border) !important;
-          border-radius: 12px !important;
-          box-shadow: 0 22px 70px rgba(0,0,0,.65) !important;
-        }
-        ul[role="listbox"]{
-          background: rgba(10,11,16,.98) !important;
-        }
-        ul[role="listbox"] *{
+        div[data-baseweb="select"] input{
+          background: transparent !important;
           color: var(--ink) !important;
         }
-        /* Hover highlight */
-        li[role="option"]:hover{
-          background: rgba(184,155,94,.15) !important;
-        }
-        /* Selected option highlight */
-        li[aria-selected="true"]{
-          background: rgba(179,0,0,.18) !important;
+
+        /* ===========================================
+           DROPDOWN (open menu): force readable text
+           Streamlit may keep menu background WHITE.
+           So we make the OPTION TEXT DARK.
+           =========================================== */
+
+        /* Target listbox options in multiple structures */
+        div[data-baseweb="popover"] li[role="option"],
+        div[data-baseweb="popover"] li[role="option"] * ,
+        ul[role="listbox"] li,
+        ul[role="listbox"] li * {
+          color: #111 !important;           /* dark text on white background */
         }
 
-        /* Radio / checkbox labels */
-        [data-testid="stRadio"] * , [data-testid="stCheckbox"] *{
-          color: var(--ink) !important;
+        /* Ensure hover/selected remain readable even on white */
+        div[data-baseweb="popover"] li[role="option"]:hover,
+        ul[role="listbox"] li:hover{
+          background: rgba(0,0,0,0.08) !important;
+        }
+        div[data-baseweb="popover"] li[aria-selected="true"],
+        ul[role="listbox"] li[aria-selected="true"]{
+          background: rgba(0,0,0,0.12) !important;
         }
 
         /* Buttons */
@@ -327,6 +333,8 @@ def apply_heresy_style() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
 
 
 def title_plate(text: str, subtitle: str = "") -> None:
@@ -842,6 +850,8 @@ def cp_color(cp: int) -> str:
 def tile_glyph(is_planet: bool) -> str:
     # Better readability than emojis across platforms
     return "◉" if is_planet else "✦"
+
+
 
 
 def make_map(df: pd.DataFrame, geom: HexGeom) -> go.Figure:
