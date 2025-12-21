@@ -27,6 +27,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+import base64
+import json
+from datetime import timedelta
+
+import extra_streamlit_components as stx
+
 
 # ============================
 # App Config
@@ -47,6 +53,108 @@ BATTLE_TYPES = {
     "gothic_armada": "Gothic Armada — Void (Space)",
 }
 SIDE_LABELS = {"loyalist": "Loyalist", "traitor": "Traitor", "draw": "Draw"}
+
+
+# ============================
+# Persistent Login (Signed Cookie)
+# ============================
+COOKIE_NAME = "heresy_auth"
+
+# IMPORTANT: set this in Synology Container env vars (or docker-compose) to a long random string
+# e.g. openssl rand -hex 32
+AUTH_SECRET = os.environ.get("AUTH_SECRET", "").strip()
+
+REMEMBER_DAYS_DEFAULT = 7
+
+
+def cookie_mgr():
+    if "_cookie_mgr" not in st.session_state:
+        st.session_state["_cookie_mgr"] = stx.CookieManager()
+    return st.session_state["_cookie_mgr"]
+
+
+def _b64url_encode(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).decode("utf-8").rstrip("=")
+
+
+def _b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode((s + pad).encode("utf-8"))
+
+
+def _sign(payload: bytes) -> str:
+    if not AUTH_SECRET:
+        # Fallback (still works but not secure). Strongly recommend setting AUTH_SECRET.
+        secret = "dev-insecure-secret"
+    else:
+        secret = AUTH_SECRET
+    sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).digest()
+    return _b64url_encode(sig)
+
+
+def make_auth_token(user_id: int, email: str, *, remember_days: int) -> str:
+    exp = datetime.now(timezone.utc) + timedelta(days=remember_days)
+    data = {
+        "uid": int(user_id),
+        "email": str(email).strip().lower(),
+        "exp": int(exp.timestamp()),
+    }
+    payload = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    token = _b64url_encode(payload) + "." + _sign(payload)
+    return token
+
+
+def parse_auth_token(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        if not token or "." not in token:
+            return None
+        p1, p2 = token.split(".", 1)
+        payload = _b64url_decode(p1)
+        if not hmac.compare_digest(_sign(payload), p2):
+            return None
+        data = json.loads(payload.decode("utf-8"))
+        if int(data.get("exp", 0)) < int(datetime.now(timezone.utc).timestamp()):
+            return None
+        # basic sanity
+        if "uid" not in data or "email" not in data:
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def load_user_from_cookie() -> None:
+    """
+    If cookie is valid, restore st.session_state["user"].
+    Call this very early in main(), before rendering pages.
+    """
+    if "user" in st.session_state:
+        return
+
+    cm = cookie_mgr()
+    token = cm.get(COOKIE_NAME)
+    parsed = parse_auth_token(token) if token else None
+    if not parsed:
+        return
+
+    # Fetch user from DB to ensure they still exist
+    c = conn()
+    row = c.execute("SELECT * FROM users WHERE id=? AND email=?", (int(parsed["uid"]), parsed["email"])).fetchone()
+    c.close()
+    if row:
+        st.session_state["user"] = dict(row)
+
+
+def set_login_cookie(user: Dict[str, Any], remember_days: int) -> None:
+    cm = cookie_mgr()
+    token = make_auth_token(int(user["id"]), str(user["email"]), remember_days=remember_days)
+    # CookieManager sets a persistent cookie; we store expiry in token itself.
+    cm.set(COOKIE_NAME, token)
+
+
+def clear_login_cookie() -> None:
+    cm = cookie_mgr()
+    cm.delete(COOKIE_NAME)
 
 
 
@@ -997,10 +1105,14 @@ def page_account():
     with tab_login:
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_pw")
+        remember = st.checkbox(f"Remember me ({REMEMBER_DAYS_DEFAULT} days)", value=True)
+
         if st.button("Log in", use_container_width=True):
             ok, user = verify_login(email, password)
             if ok:
                 st.session_state["user"] = user
+                if remember:
+                    set_login_cookie(user, REMEMBER_DAYS_DEFAULT)
                 set_banner(f"Welcome, {user['display_name']}.", kind="success")
                 st.rerun()
             else:
@@ -1016,14 +1128,13 @@ def page_account():
             set_banner(msg, kind="success" if ok else "error")
             st.rerun()
 
-    if "user" in st.session_state:
-        st.divider()
-        st.write(f"Signed in as **{st.session_state['user']['display_name']}**")
-        st.caption(st.session_state["user"]["email"])
-        if st.button("Log out"):
+    if st.button("Log out"):
+        if "user" in st.session_state:
             del st.session_state["user"]
-            set_banner("Logged out.", kind="info")
-            st.rerun()
+        clear_login_cookie()
+        set_banner("Logged out.", kind="info")
+        st.rerun()
+
 
 
 def page_dashboard():
@@ -1113,7 +1224,8 @@ def page_log_battle():
     require_login_stop()
 
     st.caption("Submit a result and the map updates immediately.")
-    #if st.toggle("Auto-refresh this page every 10 seconds", value=False):
+    #removed the below as it didn't work
+    #if st.toggle("Auto-refresh this page every 10 seconds", value=False): 
     #    st.autorefresh(interval=10_000, key="autorefresh_log")
 
     df = df_territories()
@@ -1400,7 +1512,8 @@ def main():
     st.set_page_config(page_title=APP_TITLE, layout="wide")
     apply_heresy_style()
     init_db()
-
+    load_user_from_cookie()
+    
     st.title(APP_TITLE)
 
     with st.sidebar:
