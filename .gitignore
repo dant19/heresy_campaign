@@ -1,0 +1,13 @@
+# Databases
+campaign.db
+*.db
+
+# Python junk
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS junk
+.DS_Store
+Thumbs.db
