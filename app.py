@@ -1028,7 +1028,7 @@ def page_dashboard():
         fig,
         use_container_width=True,
         config={
-            "scrollZoom": False,          # disables scroll wheel / trackpad zoom
+            "scrollZoom": False,          # disables scroll wheel / trackpad zoom.
             "doubleClick": False,         # disables double click zoom reset
             "displayModeBar": False,      # hides the modebar (less accidental taps)
             "responsive": True,
