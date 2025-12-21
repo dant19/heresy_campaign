@@ -268,29 +268,48 @@ def apply_heresy_style() -> None:
           color: var(--ink) !important;
         }
 
-        /* ===========================================
-           DROPDOWN (open menu): force readable text
-           Streamlit may keep menu background WHITE.
-           So we make the OPTION TEXT DARK.
-           =========================================== */
-
-        /* Target listbox options in multiple structures */
+        /* ===========================
+        DROPDOWN FIX (DESKTOP)
+        =========================== */
+        @media (pointer: fine) {
         div[data-baseweb="popover"] li[role="option"],
-        div[data-baseweb="popover"] li[role="option"] * ,
+        div[data-baseweb="popover"] li[role="option"] *,
         ul[role="listbox"] li,
         ul[role="listbox"] li * {
-          color: #111 !important;           /* dark text on white background */
+            color: #111 !important;
         }
 
-        /* Ensure hover/selected remain readable even on white */
-        div[data-baseweb="popover"] li[role="option"]:hover,
-        ul[role="listbox"] li:hover{
-          background: rgba(0,0,0,0.08) !important;
+        li[role="option"]:hover {
+            background: rgba(0,0,0,0.08) !important;
         }
-        div[data-baseweb="popover"] li[aria-selected="true"],
-        ul[role="listbox"] li[aria-selected="true"]{
-          background: rgba(0,0,0,0.12) !important;
+
+        li[aria-selected="true"] {
+            background: rgba(0,0,0,0.12) !important;
         }
+        }
+
+        /* ===========================
+        DROPDOWN FIX (MOBILE)
+        =========================== */
+        @media (pointer: coarse) {
+        div[data-baseweb="popover"],
+        ul[role="listbox"] {
+            background: rgba(12,12,18,0.98) !important;
+        }
+
+        div[data-baseweb="popover"] li[role="option"],
+        div[data-baseweb="popover"] li[role="option"] *,
+        ul[role="listbox"] li,
+        ul[role="listbox"] li * {
+            color: #f0eadc !important;
+        }
+
+        li[role="option"]:hover,
+        li[aria-selected="true"] {
+            background: rgba(184,155,94,0.22) !important;
+        }
+        }
+
 
         /* Buttons */
         .stButton button{
