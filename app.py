@@ -954,13 +954,14 @@ def make_map(df: pd.DataFrame, geom: HexGeom) -> go.Figure:
             )
 
     fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-        height=680,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#f0eadc"),
+    dragmode=False,                 # disables box/lasso/zoom drag
+    margin=dict(l=10, r=10, t=10, b=10),
+    xaxis=dict(visible=False, fixedrange=True),  # disables zoom/pan on x
+    yaxis=dict(visible=False, fixedrange=True, scaleanchor="x", scaleratio=1),  # disables zoom/pan on y
+    height=680,
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(color="#f0eadc"),
     )
     return fig
 
@@ -1022,7 +1023,18 @@ def page_dashboard():
     st.caption("Score weights planets higher than space. Control counts when Held/Secure (|CP| ≥ 3).")
 
     geom = HexGeom(size=1.0, pointy_top=True)
-    st.plotly_chart(make_map(df, geom), use_container_width=True)
+    fig = make_map(df, geom)
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,          # disables scroll wheel / trackpad zoom
+            "doubleClick": False,         # disables double click zoom reset
+            "displayModeBar": False,      # hides the modebar (less accidental taps)
+            "responsive": True,
+        },
+)
+
 
     with st.expander("Territories table"):
         show = df.copy()
