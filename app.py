@@ -1112,9 +1112,9 @@ def page_log_battle():
     render_banner_once()
     require_login_stop()
 
-    st.caption("Submit a result and the map updates immediately. Toggle auto-refresh for a more ‘live’ feel.")
-    if st.toggle("Auto-refresh this page every 10 seconds", value=False):
-        st.autorefresh(interval=10_000, key="autorefresh_log")
+    st.caption("Submit a result and the map updates immediately.")
+    #if st.toggle("Auto-refresh this page every 10 seconds", value=False):
+    #    st.autorefresh(interval=10_000, key="autorefresh_log")
 
     df = df_territories()
 
