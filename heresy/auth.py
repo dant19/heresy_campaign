@@ -150,3 +150,15 @@ def verify_login(email: str, password: str) -> Tuple[bool, Optional[Dict[str, An
         return True, dict(row)
 
     return False, None
+
+def admin_emails() -> set[str]:
+    raw = os.environ.get("ADMIN_EMAILS", "").strip()
+    if not raw:
+        return set()
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+def is_admin() -> bool:
+    if "user" not in st.session_state:
+        return False
+    email = (st.session_state["user"].get("email") or "").strip().lower()
+    return email in admin_emails()

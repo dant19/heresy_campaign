@@ -143,6 +143,24 @@ def title_plate(text: str, subtitle: str = "") -> None:
 def set_banner(message: str, *, kind: str = "success") -> None:
     st.session_state["banner"] = {"message": message, "kind": kind, "ts": utc_now_iso()}
 
+def admin_badge_html() -> str:
+    return """
+    <span style="
+        display:inline-block;
+        padding:2px 10px;
+        border-radius:999px;
+        font-weight:900;
+        letter-spacing:.6px;
+        font-size:0.80rem;
+        border:1px solid rgba(184,155,94,.45);
+        background: linear-gradient(180deg, rgba(184,155,94,.18), rgba(16,17,26,.35));
+        color:#f0eadc;
+        box-shadow: 0 10px 25px rgba(0,0,0,.25);
+        ">
+        ADMIN
+    </span>
+    """
+
 
 def render_banner_once() -> None:
     payload = st.session_state.get("banner")

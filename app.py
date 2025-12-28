@@ -31,6 +31,7 @@ def main():
     load_user_from_cookie()
 
     st.title(APP_TITLE)
+    st.caption("A narrative campaign for the Horus Heresy, by Hutton Hearthguards")
 
     with st.sidebar:
         st.subheader("Navigation")

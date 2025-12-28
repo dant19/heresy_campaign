@@ -1,7 +1,7 @@
 import os
 import re
 
-APP_TITLE = "Heresy Campaign Tracker — Planets & Void"
+APP_TITLE = "Ashes Across the Void"
 DB_PATH = "data/campaign.db"
 CP_MIN, CP_MAX = -6, 6
 
